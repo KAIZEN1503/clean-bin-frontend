@@ -54,7 +54,7 @@ const Home = () => {
               <Button 
                 size="lg" 
                 variant="outline" 
-                className="border-white text-white hover:bg-white hover:text-primary text-lg px-8 py-3 h-auto"
+                className="bg-primary border-primary text-primary-foreground hover:bg-primary-glow hover:border-primary-glow text-lg px-8 py-3 h-auto"
               >
                 Try Waste Detection
               </Button>
