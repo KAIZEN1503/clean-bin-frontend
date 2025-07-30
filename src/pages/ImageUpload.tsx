@@ -5,59 +5,28 @@ import { Badge } from "@/components/ui/badge";
 import { Upload, Camera, RefreshCw, CheckCircle, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { wasteDetectionService, type WasteDetectionResult } from "@/services/wasteDetection";
 
-interface AnalysisResult {
-  category: "wet" | "dry" | "hazardous";
-  confidence: number;
-  items: string[];
-  recommendations: string[];
-}
+// Using the interface from the service
+type AnalysisResult = WasteDetectionResult;
 
 const ImageUpload = () => {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // Mock AI analysis function
-  const mockAnalyzeWaste = (fileName: string): AnalysisResult => {
-    const scenarios = [
-      {
-        category: "wet" as const,
-        confidence: 0.87,
-        items: ["Fruit peels", "Vegetable scraps"],
-        recommendations: [
-          "This appears to be organic waste suitable for composting",
-          "Place in your green/wet waste bin",
-          "Consider starting a home compost system"
-        ]
-      },
-      {
-        category: "dry" as const,
-        confidence: 0.92,
-        items: ["Plastic bottle", "Paper wrapper"],
-        recommendations: [
-          "These items can be recycled",
-          "Clean the containers before recycling",
-          "Place in your blue/dry waste bin"
-        ]
-      },
-      {
-        category: "hazardous" as const,
-        confidence: 0.78,
-        items: ["Battery", "Electronic component"],
-        recommendations: [
-          "This requires special disposal methods",
-          "Take to designated e-waste collection center",
-          "Do not dispose in regular waste bins"
-        ]
-      }
-    ];
-
-    // Mock logic based on filename or random selection
-    const randomIndex = Math.floor(Math.random() * scenarios.length);
-    return scenarios[randomIndex];
+  // Real TensorFlow-based waste analysis
+  const analyzeWasteWithTensorFlow = async (file: File): Promise<AnalysisResult> => {
+    try {
+      const imageElement = await wasteDetectionService.createImageElement(file);
+      return await wasteDetectionService.detectWaste(imageElement);
+    } catch (error) {
+      console.error('TensorFlow analysis failed:', error);
+      throw error;
+    }
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -84,6 +53,9 @@ const ImageUpload = () => {
       return;
     }
 
+    // Store both the file and its data URL
+    setUploadedFile(file);
+    
     const reader = new FileReader();
     reader.onload = (e) => {
       setUploadedImage(e.target?.result as string);
@@ -98,21 +70,33 @@ const ImageUpload = () => {
   };
 
   const analyzeImage = async () => {
-    if (!uploadedImage) return;
+    if (!uploadedFile) return;
 
     setIsAnalyzing(true);
     
-    // Simulate AI processing time
-    await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 1000));
-    
-    const result = mockAnalyzeWaste("uploaded-image");
-    setAnalysisResult(result);
-    setIsAnalyzing(false);
+    try {
+      toast({
+        title: "Loading AI Model",
+        description: "Initializing TensorFlow.js model for analysis..."
+      });
 
-    toast({
-      title: "Analysis Complete",
-      description: `Detected ${result.category} waste with ${Math.round(result.confidence * 100)}% confidence`
-    });
+      const result = await analyzeWasteWithTensorFlow(uploadedFile);
+      setAnalysisResult(result);
+
+      toast({
+        title: "Analysis Complete",
+        description: `Detected ${result.category} waste with ${Math.round(result.confidence * 100)}% confidence`
+      });
+    } catch (error) {
+      console.error('Analysis failed:', error);
+      toast({
+        title: "Analysis Failed",
+        description: "Unable to analyze the image. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const getCategoryColor = (category: string) => {
@@ -135,6 +119,7 @@ const ImageUpload = () => {
 
   const resetUpload = () => {
     setUploadedImage(null);
+    setUploadedFile(null);
     setAnalysisResult(null);
     setIsAnalyzing(false);
     if (fileInputRef.current) {
@@ -148,14 +133,14 @@ const ImageUpload = () => {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-foreground mb-4">
-            Waste Detection Simulator
+            AI Waste Detection
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Upload an image of waste items and our AI-powered system will help you identify the correct waste category.
+            Upload an image of waste items and our TensorFlow.js-powered AI will help you identify the correct waste category.
           </p>
           <div className="mt-4 text-sm text-muted-foreground">
-            <Badge variant="secondary" className="mr-2">Demo Mode</Badge>
-            This is a simulation for demonstration purposes
+            <Badge variant="secondary" className="mr-2">TensorFlow.js</Badge>
+            Real AI-powered waste classification
           </div>
         </div>
 
@@ -334,9 +319,9 @@ const ImageUpload = () => {
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
                   <span className="text-xl">🤖</span>
                 </div>
-                <h3 className="font-semibold mb-2">2. AI Analysis</h3>
+                <h3 className="font-semibold mb-2">2. TensorFlow Analysis</h3>
                 <p className="text-sm text-muted-foreground">
-                  Our AI system analyzes the image to identify waste types and materials
+                  TensorFlow.js analyzes the image using machine learning to identify waste types
                 </p>
               </div>
               <div className="text-center">
